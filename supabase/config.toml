@@ -1,0 +1,10 @@
+project_id = "axxquqtgbfqrorpddnxc"
+
+[functions.ai-therapy-chat]
+verify_jwt = true
+
+[functions.create-booking]
+verify_jwt = true
+
+[functions.send-booking-confirmation]
+verify_jwt = false

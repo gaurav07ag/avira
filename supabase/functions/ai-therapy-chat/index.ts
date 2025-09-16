@@ -20,12 +20,12 @@ serve(async (req) => {
     }
 
     // Replace 'YOUR_GEMINI_API_KEY_HERE' with your actual Gemini API key
-    const geminiApiKey = 'AIzaSyC6XvgyuCZUpwKiv8Yl36hz5hnUZh63iv4';
-    
-    if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY_HERE') {
-      throw new Error('Please replace YOUR_GEMINI_API_KEY_HERE with your actual Gemini API key');
-    }
+    // Replace the old code with this:
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
+if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+  throw new Error('Please replace YOUR_GEMINI_API_KEY_HERE with your actual Gemini API key');
+}
     console.log('Processing wellness chat request:', { message, hasBiometrics: !!biometricData });
 
     // Enhanced system prompt for university student wellness

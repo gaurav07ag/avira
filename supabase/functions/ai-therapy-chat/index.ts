@@ -19,9 +19,9 @@ serve(async (req) => {
       throw new Error('Message is required');
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('Gemini API key not configured');
     }
 
     console.log('Processing wellness chat request:', { message, hasBiometrics: !!biometricData });
@@ -82,43 +82,85 @@ Remember: You provide supportive guidance but are NOT a replacement for professi
 Please analyze this biometric data and provide personalized wellness recommendations.`;
     }
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      { role: 'user', content: userMessageContent }
-    ];
+    // Build conversation history for Gemini format
+    let conversationText = systemPrompt + "\n\nConversation History:\n";
+    
+    // Add conversation history
+    conversationHistory.forEach((msg: any) => {
+      if (msg.role === 'user') {
+        conversationText += `\nUser: ${msg.content}`;
+      } else if (msg.role === 'assistant') {
+        conversationText += `\nAvira AI: ${msg.content}`;
+      }
+    });
+    
+    // Add current user message
+    conversationText += `\nUser: ${userMessageContent}\nAvira AI:`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text: conversationText
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1000,
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        }
+      ]
+    };
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: messages,
-        max_completion_tokens: 1000,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.3,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Gemini API error:', error);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    
+    // Check if response was blocked by safety filters
+    if (data.promptFeedback?.blockReason) {
+      throw new Error(`Content was blocked: ${data.promptFeedback.blockReason}`);
+    }
+    
+    // Extract the AI response
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiResponse) {
+      throw new Error('No response generated from Gemini API');
+    }
 
     console.log('AI wellness response generated successfully');
 
     return new Response(JSON.stringify({ 
-      response: aiResponse,
+      response: aiResponse.trim(),
       conversationId: crypto.randomUUID()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

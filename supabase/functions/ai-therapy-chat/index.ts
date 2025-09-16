@@ -19,9 +19,11 @@ serve(async (req) => {
       throw new Error('Message is required');
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      throw new Error('Gemini API key not configured');
+    // Replace 'YOUR_GEMINI_API_KEY_HERE' with your actual Gemini API key
+    const geminiApiKey = 'AIzaSyC6XvgyuCZUpwKiv8Yl36hz5hnUZh63iv4';
+    
+    if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY_HERE') {
+      throw new Error('Please replace YOUR_GEMINI_API_KEY_HERE with your actual Gemini API key');
     }
 
     console.log('Processing wellness chat request:', { message, hasBiometrics: !!biometricData });
